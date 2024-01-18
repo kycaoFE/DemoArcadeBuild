@@ -112359,16 +112359,7 @@
       ],
       "_components": [
         {
-          "__type__": "cc.Canvas",
-          "node": {
-            "__id__": 2
-          },
-          "_designResolution": {
-            "__type__": "cc.Size",
-            "width": 1280,
-            "height": 720
-          },
-          "_fitWidth": true
+          "__id__": 13
         },
         {
           "__type__": "fa941+gtHpLyav1/tKLU0Uh",
@@ -112435,6 +112426,17 @@
         }
       ],
       "_level": 1,
+      "_components": [
+        {
+          "__type__": "f0052T/CM9DPJPxa6ChdZNV",
+          "node": {
+            "__id__": 4
+          },
+          "canvas": {
+            "__id__": 13
+          }
+        }
+      ],
       "_contentSize": {
         "__type__": "cc.Size",
         "width": 1280,
@@ -112670,6 +112672,17 @@
         "__id__": 11
       },
       "_N$progress": 0.5
+    },
+    {
+      "__type__": "cc.Canvas",
+      "node": {
+        "__id__": 2
+      },
+      "_designResolution": {
+        "__type__": "cc.Size",
+        "width": 1280,
+        "height": 720
+      }
     }
   ],
   {
