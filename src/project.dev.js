@@ -25657,8 +25657,8 @@ window.__require = function e(t, n, r) {
         this.skeletonAnim.addAnimation(0, "run", true);
         this.oderFinish = data.indexOf(this.buffaloNumber);
         this.durationFinish = data_1.Data.instance.minDuration + .5 * this.oderFinish;
-        this.xCurrent = this.node.x;
         this.distance = data_1.Data.instance.racingDistance;
+        this.xCurrent = this.node.x;
         this.speed = this.distance / this.durationFinish;
         this.timeChangeSpeed = this.durationFinish / this.randomMinMax(3, 5);
         this._timeChangeSpeed = this.timeChangeSpeed;
@@ -26454,6 +26454,7 @@ window.__require = function e(t, n, r) {
         this.xFinish = 4660;
         this.racingDistance = 5060;
         this.minDuration = 10;
+        this.layerDistance = [ 0, 0 ];
       }
       Data.prototype.setGameNumber = function(gameNumber) {
         this.gameNumber = gameNumber;
@@ -26931,7 +26932,7 @@ window.__require = function e(t, n, r) {
       gaBaseConfig.designSize = {
         width: 1280,
         height: 720,
-        maxWidth: 2e3
+        maxWidth: 1280
       };
       gaBaseConfig.visibleSize = {
         width: 1280,
@@ -38176,6 +38177,8 @@ window.__require = function e(t, n, r) {
     Object.defineProperty(exports, "__esModule", {
       value: true
     });
+    var gaBaseConfig_1 = require("./cc-arcade-base/Scripts/Config/gaBaseConfig");
+    var gaUtils_1 = require("./cc-arcade-base/Scripts/Utilities/gaUtils");
     var CanvasScaleByOrientation = require("CanvasScaleByOrientation");
     var _a = cc._decorator, ccclass = _a.ccclass, property = _a.property;
     var NewClass = function(_super) {
@@ -38199,6 +38202,21 @@ window.__require = function e(t, n, r) {
       };
       NewClass.prototype.scaleCanvasByOrientation = function() {
         _super.prototype.scaleCanvasByOrientation.call(this);
+        var visibleSize = gaBaseConfig_1.default.visibleSize, designSize = gaBaseConfig_1.default.designSize;
+        this._visibleSize = cc.view.getVisibleSize();
+        var designRatio = designSize.width / designSize.height;
+        var maxRatio = designSize.maxWidth / designSize.height;
+        var viewPortRatio = this._visibleSize.width / this._visibleSize.height;
+        var scale = gaUtils_1.default.clamp(viewPortRatio, designRatio, maxRatio);
+        if (this.canvas.fitWidth) {
+          visibleSize.width = designSize.width;
+          visibleSize.height = designSize.width / scale;
+        } else {
+          visibleSize.width = designSize.height * scale;
+          visibleSize.height = designSize.height;
+        }
+        this.node.width = visibleSize.width;
+        this.node.height = visibleSize.height;
       };
       __decorate([ property(cc.Canvas) ], NewClass.prototype, "canvas", void 0);
       NewClass = __decorate([ ccclass ], NewClass);
@@ -38207,6 +38225,8 @@ window.__require = function e(t, n, r) {
     exports.default = NewClass;
     cc._RF.pop();
   }, {
+    "./cc-arcade-base/Scripts/Config/gaBaseConfig": "gaBaseConfig",
+    "./cc-arcade-base/Scripts/Utilities/gaUtils": "gaUtils",
     CanvasScaleByOrientation: "CanvasScaleByOrientation"
   } ],
   globalAnimationLibrary: [ function(require, module, exports) {
@@ -38796,39 +38816,48 @@ window.__require = function e(t, n, r) {
     Object.defineProperty(exports, "__esModule", {
       value: true
     });
+    var data_1 = require("./data");
+    var gaEventEmitter_1 = require("./cc-arcade-base/Scripts/Common/gaEventEmitter");
     var _a = cc._decorator, ccclass = _a.ccclass, property = _a.property;
     var NewClass = function(_super) {
       __extends(NewClass, _super);
       function NewClass() {
         var _this = null !== _super && _super.apply(this, arguments) || this;
         _this.layer = null;
-        _this._positionSpawn = -800;
         _this.count = 1;
         _this.numberChildren = 7;
         return _this;
       }
-      NewClass.prototype.update = function(dt) {
-        if (this.node.x <= this._positionSpawn * this.count) {
-          this.spawnLayer();
-          cc.warn("spawn");
-        }
+      NewClass.prototype.onLoad = function() {};
+      NewClass.prototype.start = function() {
+        this._positionSpawn = 960;
+        gaEventEmitter_1.default.instance.registerEvent("prepareDone", this.spawnLayer.bind(this));
       };
       NewClass.prototype.spawnLayer = function() {
-        var layer = cc.instantiate(this.layer);
-        layer.parent = this.node;
-        var positionInstantiate = (this.numberChildren + this.count - 1) * layer.width;
-        layer.x = positionInstantiate;
-        this.count++;
-        this.node.children[0].destroy();
+        cc.warn("spawn");
+        var time = Math.ceil(data_1.Data.instance.layerDistance[this.indexLayer] / this._positionSpawn);
+        for (var i = 0; i < time; i++) {
+          var layer = cc.instantiate(this.layer);
+          layer.parent = this.node;
+          var positionInstantiate = (this.numberChildren + this.count - 1) * layer.width;
+          layer.x = positionInstantiate;
+          this.count++;
+          this.numberChildren > 10 && this.node.children[i].destroy();
+        }
+        data_1.Data.instance.layerDistance[this.indexLayer] = 0;
       };
       __decorate([ property(cc.Prefab) ], NewClass.prototype, "layer", void 0);
+      __decorate([ property ], NewClass.prototype, "indexLayer", void 0);
       __decorate([ property ], NewClass.prototype, "_positionSpawn", void 0);
       NewClass = __decorate([ ccclass ], NewClass);
       return NewClass;
     }(cc.Component);
     exports.default = NewClass;
     cc._RF.pop();
-  }, {} ],
+  }, {
+    "./cc-arcade-base/Scripts/Common/gaEventEmitter": "gaEventEmitter",
+    "./data": "data"
+  } ],
   lightEffect: [ function(require, module, exports) {
     "use strict";
     cc._RF.push(module, "b3416cgFyxD0ZjFwj8d24pu", "lightEffect");
@@ -39198,13 +39227,18 @@ window.__require = function e(t, n, r) {
         _this.betPools = [];
         _this.ui = null;
         _this.racingController = null;
+        _this.isAutoBet = false;
         return _this;
       }
       MainController.prototype.onLoad = function() {
+        var _this = this;
         data_1.Data.instance = new data_1.Data();
         data_1.ccData.instance = new data_1.ccData();
         gaEventEmitter_1.default.instance.registerEvent("racingDone", this.racingDone.bind(this));
         gaEventEmitter_1.default.instance.registerEvent(gaEventsCode_1.default.NETWORK.WEB_SOCKET_OPEN, this.joinGame.bind(this));
+        gaEventEmitter_1.default.instance.registerEvent("prepareDone", function() {
+          _this.isAutoBet && _this.racing();
+        });
       };
       MainController.prototype.start = function() {
         this.betStateManager = new betStateManager_1.default();
@@ -39278,6 +39312,13 @@ window.__require = function e(t, n, r) {
           _this.uiManager.activeBettingArea(true);
         }, 2);
         this.reJoinGame();
+      };
+      MainController.prototype.autoBet = function() {
+        this.isAutoBet = true;
+        this.racing();
+      };
+      MainController.prototype.unAutoBet = function() {
+        this.isAutoBet = false;
       };
       __decorate([ property(cc.Prefab) ], MainController.prototype, "oddsItemPrefab", void 0);
       __decorate([ property(cc.Node) ], MainController.prototype, "betBackgroundPools", void 0);
@@ -39662,6 +39703,9 @@ window.__require = function e(t, n, r) {
           _this.isRacing = false;
         });
       };
+      NewClass.prototype.start = function() {
+        this.countDownLabel.node.active = false;
+      };
       NewClass.prototype.update = function(dt) {
         var _this = this;
         this.countDownLabel.node.active && (this.countDownLabel.string = Math.round(this.labelString.value).toString());
@@ -39669,11 +39713,10 @@ window.__require = function e(t, n, r) {
         var speed = this.getFastestBuffalo().getComponent("buffaloController").speed;
         this.node.x -= speed * dt;
         this.layers.forEach(function(layer, index) {
-          layer.x -= _this.layerSpeed[index] * speed * dt;
+          var distance = _this.layerSpeed[index] * speed * dt;
+          layer.x -= distance;
+          data_1.Data.instance.layerDistance[index] += distance;
         });
-      };
-      NewClass.prototype.start = function() {
-        this.countDownLabel.node.active = false;
       };
       NewClass.prototype.racing = function() {
         this.buffalosOderFinish = data_1.Data.instance.getOderFinish().split("");
@@ -39695,8 +39738,11 @@ window.__require = function e(t, n, r) {
           gaEventEmitter_1.default.instance.emit("racingPrepareDone");
         }).start();
         this.layers.forEach(function(layer, index) {
+          var distance = -_this.distanceScroll * _this.layerSpeed[index];
           cc.tween(layer).by(durationPrepare, {
-            x: -_this.distanceScroll * _this.layerSpeed[index]
+            x: distance
+          }).call(function() {
+            data_1.Data.instance.layerDistance[index] -= distance;
           }).start();
         });
       };
@@ -39707,7 +39753,7 @@ window.__require = function e(t, n, r) {
         this.labelString = {
           value: time
         };
-        cc.tween(this.labelString).to(3, {
+        cc.tween(this.labelString).to(time, {
           value: 0
         }).call(function() {
           gaEventEmitter_1.default.instance.emit("racing", _this.buffalosOderFinish);
@@ -39721,10 +39767,14 @@ window.__require = function e(t, n, r) {
           x: -this.distanceScrollPrepare
         }).call(function() {
           _this.node.x = -200;
+          gaEventEmitter_1.default.instance.emit("prepareDone");
         }).start();
         this.layers.forEach(function(layer, index) {
+          var distance = -200 * _this.layerSpeed[index];
           cc.tween(layer).by(1, {
-            x: -200 * _this.layerSpeed[index]
+            x: distance
+          }).call(function() {
+            data_1.Data.instance.layerDistance[index] -= distance;
           }).start();
         });
       };
