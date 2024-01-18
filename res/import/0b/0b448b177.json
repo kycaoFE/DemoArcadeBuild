@@ -112432,11 +112432,11 @@
           "node": {
             "__id__": 4
           },
-          "isPortrait": false,
+          "_enabled": false,
+          "autoOrientation": true,
           "canvas": {
             "__id__": 13
-          },
-          "fitByOrientation": false
+          }
         }
       ],
       "_contentSize": {
