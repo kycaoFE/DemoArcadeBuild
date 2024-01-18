@@ -112432,6 +112432,7 @@
           "node": {
             "__id__": 4
           },
+          "autoOrientation": true,
           "canvas": {
             "__id__": 13
           }
