@@ -25167,10 +25167,6 @@ window.__require = function e(t, n, r) {
       BetStateManager.prototype.showResult = function() {
         var buffalosWin = data_1.Data.instance.getBuffalosWin();
         var resultString = "Oder Finish: " + data_1.Data.instance.getOderFinish() + "\nBuffalo Win: " + buffalosWin + "\nBet Money Win: " + data_1.Data.instance.getMoneyWin() + "K";
-        this.bettingCurrent.forEach(function(element) {
-          var betItemController = element.getComponent("betItemController");
-          betItemController.resetBetValue();
-        });
         return resultString;
       };
       BetStateManager = __decorate([ ccclass ], BetStateManager);
@@ -25616,88 +25612,110 @@ window.__require = function e(t, n, r) {
     var data_1 = require("./data");
     var gaEventEmitter_1 = require("./cc-arcade-base/Scripts/Common/gaEventEmitter");
     var _a = cc._decorator, ccclass = _a.ccclass, property = _a.property;
-    var NewClass = function(_super) {
-      __extends(NewClass, _super);
-      function NewClass() {
+    var BuffaloController = function(_super) {
+      __extends(BuffaloController, _super);
+      function BuffaloController() {
         var _this = null !== _super && _super.apply(this, arguments) || this;
         _this.skeletonAnim = null;
         _this.speed = 0;
+        _this.speedCurrent = [];
         _this.durationFinish = 0;
         _this.isIdle = true;
         _this.timeChangeSpeed = 0;
         _this._timeChangeSpeed = 0;
-        _this.xCurrent = 0;
+        _this.numChangeSpeed = 0;
         _this.distance = 0;
+        _this.speedBase = [ .8, .9, 1, 1.1, 1.2 ];
+        _this.isTrans = false;
         return _this;
       }
-      NewClass.prototype.onLoad = function() {
+      BuffaloController.prototype.onLoad = function() {
         gaEventEmitter_1.default.instance.registerEvent("racing", this.run.bind(this));
         gaEventEmitter_1.default.instance.registerEvent("prepareNextRound", this.prepareNextRound.bind(this));
       };
-      NewClass.prototype.start = function() {
+      BuffaloController.prototype.start = function() {
         this.skeletonAnim = this.node.getComponent(sp.Skeleton);
         this.xFinish = data_1.Data.instance.xFinish;
         this.buffaloNumber = this.node.name;
         this.idle();
+        this.skeletonAnim.findSlot("giftbox").setAttachment("", "");
+        this.schedule(this.checkAnimationStatus, .05);
+        this.timeTrans = this.skeletonAnim.findAnimation("run_trans_idle").duration;
       };
-      NewClass.prototype.update = function(dt) {
+      BuffaloController.prototype.update = function(dt) {
         if (this.isIdle) return;
         this.node.x += this.speed * dt;
         this.changeSpeed(dt);
-        if (this.node.x >= this.xFinish) {
-          this.isIdle = true;
-          this.idle();
-          this.speed = 0;
-          5 == this.oderFinish && gaEventEmitter_1.default.instance.emit("racingDone");
-        }
+        this.isTrans && (this.isIdle = true);
       };
-      NewClass.prototype.run = function(data) {
-        this.isIdle = false;
+      BuffaloController.prototype.run = function(data) {
+        this.oderFinish = data_1.Data.instance.getOderBuffalo(this.buffaloNumber);
+        this.distance = data_1.Data.instance.racingDistance;
+        this.durationFinish = data_1.Data.instance.minDuration + .2 * this.oderFinish;
+        this.speedCurrent = this.randomSpeed();
+        this.numChangeSpeed = 0;
+        this.speed = this.distance / this.durationFinish * this.speedCurrent[this.numChangeSpeed];
+        this.timeChangeSpeed = this.durationFinish / 5;
+        this._timeChangeSpeed = this.timeChangeSpeed;
         this.skeletonAnim.setAnimation(0, "idle_trans_run", false);
         this.skeletonAnim.addAnimation(0, "run", true);
-        this.oderFinish = data.indexOf(this.buffaloNumber);
-        this.durationFinish = data_1.Data.instance.minDuration + .5 * this.oderFinish;
-        this.distance = data_1.Data.instance.racingDistance;
-        this.xCurrent = this.node.x;
-        this.speed = this.distance / this.durationFinish;
-        this.timeChangeSpeed = this.durationFinish / this.randomMinMax(3, 5);
+        this.isIdle = false;
+        this.isTrans = false;
+      };
+      BuffaloController.prototype.changeSpeed = function(dt) {
+        this._timeChangeSpeed -= dt;
+        if (this._timeChangeSpeed > 0 || this.numChangeSpeed > 4) return;
+        this.numChangeSpeed++;
+        this.speed = this.distance / this.durationFinish * this.speedCurrent[this.numChangeSpeed];
+        this.skeletonAnim.timeScale = this.speedCurrent[this.numChangeSpeed];
         this._timeChangeSpeed = this.timeChangeSpeed;
       };
-      NewClass.prototype.changeSpeed = function(dt) {
-        this._timeChangeSpeed -= dt;
-        if (this._timeChangeSpeed <= 0 && this.durationFinish >= this.timeChangeSpeed) {
-          this.durationFinish -= this.timeChangeSpeed;
-          this.distance -= this.node.x - this.xCurrent;
-          this.speed = this.distance / this.durationFinish * this.randomMinMax(.8, 1.2);
-          this._timeChangeSpeed = this.timeChangeSpeed;
-          this.xCurrent = this.node.x;
-        }
-      };
-      NewClass.prototype.randomMinMax = function(min, max) {
+      BuffaloController.prototype.randomMinMax = function(min, max) {
         return Math.random() * (max - min) + min;
       };
-      NewClass.prototype.resetStats = function() {
-        this.oderFinish = null;
-      };
-      NewClass.prototype.prepareNextRound = function() {
+      BuffaloController.prototype.prepareNextRound = function() {
         var _this = this;
-        this.skeletonAnim.setAnimation(0, "walk", true);
-        cc.tween(this.node).by(1, {
-          x: 240
+        this.skeletonAnim.setAnimation(0, "walk_trans_idle", false);
+        cc.tween(this.node).to(data_1.Data.instance.timePrepare, {
+          x: 4900
         }).call(function() {
           _this.idle();
           _this.node.x = data_1.Data.instance.xStart;
         }).start();
       };
-      NewClass.prototype.idle = function() {
+      BuffaloController.prototype.idle = function() {
         var idleName = "idle" + Math.floor(this.randomMinMax(1, 4));
-        this.skeletonAnim.setAnimation(0, idleName, true);
+        this.skeletonAnim.addAnimation(0, idleName, true);
       };
-      __decorate([ property(sp.Skeleton) ], NewClass.prototype, "skeletonAnim", void 0);
-      NewClass = __decorate([ ccclass ], NewClass);
-      return NewClass;
+      BuffaloController.prototype.randomSpeed = function() {
+        var speeds = this.speedBase;
+        return speeds.sort(function() {
+          return Math.random() - .5;
+        });
+      };
+      BuffaloController.prototype.transToStop = function() {
+        var _this = this;
+        this.skeletonAnim.addAnimation(0, "run_trans_idle", false);
+        cc.tween(this.node).to(this.timeTrans + .05, {
+          x: this.xFinish
+        }).call(function() {
+          _this.idle();
+          5 == _this.oderFinish && gaEventEmitter_1.default.instance.emit("racingDone");
+        }).start();
+      };
+      BuffaloController.prototype.checkAnimationStatus = function() {
+        if (this.isIdle) return;
+        var trackEntry = this.skeletonAnim.getCurrent(0);
+        if (trackEntry.isComplete && "run" == trackEntry.animation.name && this.node.x >= this.xFinish - this.speed * this.timeTrans && !this.isTrans) {
+          this.isTrans = true;
+          this.transToStop();
+        }
+      };
+      __decorate([ property(sp.Skeleton) ], BuffaloController.prototype, "skeletonAnim", void 0);
+      BuffaloController = __decorate([ ccclass ], BuffaloController);
+      return BuffaloController;
     }(cc.Component);
-    exports.default = NewClass;
+    exports.default = BuffaloController;
     cc._RF.pop();
   }, {
     "./cc-arcade-base/Scripts/Common/gaEventEmitter": "gaEventEmitter",
@@ -26454,25 +26472,34 @@ window.__require = function e(t, n, r) {
         this.xFinish = 4660;
         this.racingDistance = 5060;
         this.minDuration = 10;
-        this.layerDistance = [ 0, 0 ];
+        this.layerDistance = [ 0, 0, 0, 0 ];
+        this.timePrepare = .8;
+        this.orh = [];
       }
       Data.prototype.setGameNumber = function(gameNumber) {
         this.gameNumber = gameNumber;
       };
       Data.prototype.getBuffalosWin = function() {
-        var data = this.dataRoundCurrent.data;
-        var buffalosWin = data.orh[0] < data.orh[1] ? data.orh[0] + data.orh[1] : data.orh[1] + data.orh[0];
-        return buffalosWin;
+        return this.orh[0] + this.orh[1];
       };
       Data.prototype.getOderFinish = function() {
-        return this.dataRoundCurrent.data.orh;
+        return this.orh;
       };
       Data.prototype.getMoneyWin = function() {
-        return Number(this.dataRoundCurrent.data.wg.split(";")[1]).toFixed();
+        return 0;
       };
       Data.prototype.getOderBuffalo = function(buffaloNumber) {
-        var oderFinish = this.getOderFinish();
-        return Number(oderFinish.indexOf(buffaloNumber));
+        var orderFinish = this.orh;
+        return Number(orderFinish.indexOf(buffaloNumber));
+      };
+      Data.prototype.randomOrh = function() {
+        this.orh = [];
+        var orhBase = [ "1", "2", "3", "4", "5", "6" ];
+        for (var i = 0; i < 6; i++) {
+          var randomIndex = Number([ Math.floor(Math.random() * orhBase.length) ]);
+          this.orh.push(orhBase[randomIndex]);
+          orhBase.splice(randomIndex, 1);
+        }
       };
       Data.instance = null;
       return Data;
@@ -38177,32 +38204,39 @@ window.__require = function e(t, n, r) {
     Object.defineProperty(exports, "__esModule", {
       value: true
     });
-    var gaBaseConfig_1 = require("./cc-arcade-base/Scripts/Config/gaBaseConfig");
     var gaUtils_1 = require("./cc-arcade-base/Scripts/Utilities/gaUtils");
     var CanvasScaleByOrientation = require("CanvasScaleByOrientation");
     var _a = cc._decorator, ccclass = _a.ccclass, property = _a.property;
-    var NewClass = function(_super) {
-      __extends(NewClass, _super);
-      function NewClass() {
+    var GameResize = function(_super) {
+      __extends(GameResize, _super);
+      function GameResize() {
         var _this = null !== _super && _super.apply(this, arguments) || this;
         _this.canvas = null;
         return _this;
       }
-      NewClass.prototype.start = function() {
+      GameResize.prototype.start = function() {
         this.onGameShow();
       };
-      NewClass.prototype.update = function(dt) {
+      GameResize.prototype.update = function(dt) {
         this._visibleSize.equals(cc.view.getVisibleSize()) || this.scaleCanvasByOrientation();
       };
-      NewClass.prototype.onGameShow = function() {
+      GameResize.prototype.onGameShow = function() {
         if (cc.sys.isMobile) {
           var eventResize = new Event("gameShow");
           window.dispatchEvent(eventResize);
         }
       };
-      NewClass.prototype.scaleCanvasByOrientation = function() {
+      GameResize.prototype.scaleCanvasByOrientation = function() {
         _super.prototype.scaleCanvasByOrientation.call(this);
-        var visibleSize = gaBaseConfig_1.default.visibleSize, designSize = gaBaseConfig_1.default.designSize;
+        var designSize = {
+          width: 1280,
+          height: 720,
+          maxWidth: 1280
+        };
+        var visibleSize = {
+          width: 1280,
+          height: 720
+        };
         this._visibleSize = cc.view.getVisibleSize();
         var designRatio = designSize.width / designSize.height;
         var maxRatio = designSize.maxWidth / designSize.height;
@@ -38218,14 +38252,13 @@ window.__require = function e(t, n, r) {
         this.node.width = visibleSize.width;
         this.node.height = visibleSize.height;
       };
-      __decorate([ property(cc.Canvas) ], NewClass.prototype, "canvas", void 0);
-      NewClass = __decorate([ ccclass ], NewClass);
-      return NewClass;
+      __decorate([ property(cc.Canvas) ], GameResize.prototype, "canvas", void 0);
+      GameResize = __decorate([ ccclass ], GameResize);
+      return GameResize;
     }(CanvasScaleByOrientation);
-    exports.default = NewClass;
+    exports.default = GameResize;
     cc._RF.pop();
   }, {
-    "./cc-arcade-base/Scripts/Config/gaBaseConfig": "gaBaseConfig",
     "./cc-arcade-base/Scripts/Utilities/gaUtils": "gaUtils",
     CanvasScaleByOrientation: "CanvasScaleByOrientation"
   } ],
@@ -38819,22 +38852,22 @@ window.__require = function e(t, n, r) {
     var data_1 = require("./data");
     var gaEventEmitter_1 = require("./cc-arcade-base/Scripts/Common/gaEventEmitter");
     var _a = cc._decorator, ccclass = _a.ccclass, property = _a.property;
-    var NewClass = function(_super) {
-      __extends(NewClass, _super);
-      function NewClass() {
+    var LayerController = function(_super) {
+      __extends(LayerController, _super);
+      function LayerController() {
         var _this = null !== _super && _super.apply(this, arguments) || this;
         _this.layer = null;
+        _this._positionSpawn = 960;
         _this.count = 1;
         _this.numberChildren = 7;
         return _this;
       }
-      NewClass.prototype.onLoad = function() {};
-      NewClass.prototype.start = function() {
+      LayerController.prototype.onLoad = function() {};
+      LayerController.prototype.start = function() {
         this._positionSpawn = 960;
         gaEventEmitter_1.default.instance.registerEvent("prepareDone", this.spawnLayer.bind(this));
       };
-      NewClass.prototype.spawnLayer = function() {
-        cc.warn("spawn");
+      LayerController.prototype.spawnLayer = function() {
         var time = Math.ceil(data_1.Data.instance.layerDistance[this.indexLayer] / this._positionSpawn);
         for (var i = 0; i < time; i++) {
           var layer = cc.instantiate(this.layer);
@@ -38846,13 +38879,13 @@ window.__require = function e(t, n, r) {
         }
         data_1.Data.instance.layerDistance[this.indexLayer] = 0;
       };
-      __decorate([ property(cc.Prefab) ], NewClass.prototype, "layer", void 0);
-      __decorate([ property ], NewClass.prototype, "indexLayer", void 0);
-      __decorate([ property ], NewClass.prototype, "_positionSpawn", void 0);
-      NewClass = __decorate([ ccclass ], NewClass);
-      return NewClass;
+      __decorate([ property(cc.Prefab) ], LayerController.prototype, "layer", void 0);
+      __decorate([ property ], LayerController.prototype, "indexLayer", void 0);
+      __decorate([ property ], LayerController.prototype, "_positionSpawn", void 0);
+      LayerController = __decorate([ ccclass ], LayerController);
+      return LayerController;
     }(cc.Component);
-    exports.default = NewClass;
+    exports.default = LayerController;
     cc._RF.pop();
   }, {
     "./cc-arcade-base/Scripts/Common/gaEventEmitter": "gaEventEmitter",
@@ -39082,20 +39115,20 @@ window.__require = function e(t, n, r) {
       value: true
     });
     var _a = cc._decorator, ccclass = _a.ccclass, property = _a.property;
-    var NewClass = function(_super) {
-      __extends(NewClass, _super);
-      function NewClass() {
+    var LoadingController = function(_super) {
+      __extends(LoadingController, _super);
+      function LoadingController() {
         var _this = null !== _super && _super.apply(this, arguments) || this;
         _this.loadingBar = null;
         _this.loadingController = null;
         _this.mainScene = null;
         return _this;
       }
-      NewClass.prototype.start = function() {
+      LoadingController.prototype.start = function() {
         this.loadingBar.progress = 0;
         this.loadMainScreen();
       };
-      NewClass.prototype.preloadMainScene = function() {
+      LoadingController.prototype.preloadMainScene = function() {
         var _this = this;
         var isLoaded = false;
         cc.director.preloadScene("MainScene", function(completedCount, totalCount) {
@@ -39107,7 +39140,7 @@ window.__require = function e(t, n, r) {
           }
         });
       };
-      NewClass.prototype.loadMainScreen = function() {
+      LoadingController.prototype.loadMainScreen = function() {
         var _this = this;
         cc.game.addPersistRootNode(this.node);
         cc.director.loadScene("MainScene", function(err, scene) {
@@ -39122,13 +39155,13 @@ window.__require = function e(t, n, r) {
           _this.destroy();
         });
       };
-      __decorate([ property(cc.ProgressBar) ], NewClass.prototype, "loadingBar", void 0);
-      __decorate([ property(cc.Node) ], NewClass.prototype, "loadingController", void 0);
-      __decorate([ property(cc.Node) ], NewClass.prototype, "mainScene", void 0);
-      NewClass = __decorate([ ccclass ], NewClass);
-      return NewClass;
+      __decorate([ property(cc.ProgressBar) ], LoadingController.prototype, "loadingBar", void 0);
+      __decorate([ property(cc.Node) ], LoadingController.prototype, "loadingController", void 0);
+      __decorate([ property(cc.Node) ], LoadingController.prototype, "mainScene", void 0);
+      LoadingController = __decorate([ ccclass ], LoadingController);
+      return LoadingController;
     }(cc.Component);
-    exports.default = NewClass;
+    exports.default = LoadingController;
     cc._RF.pop();
   }, {} ],
   mEmiter: [ function(require, module, exports) {
@@ -39212,7 +39245,6 @@ window.__require = function e(t, n, r) {
       value: true
     });
     var _a = cc._decorator, ccclass = _a.ccclass, property = _a.property;
-    var gaEventsCode_1 = require("./cc-arcade-base/Scripts/Definitions/gaEventsCode");
     var gaEventEmitter_1 = require("./cc-arcade-base/Scripts/Common/gaEventEmitter");
     var data_1 = require("./data");
     var betStateManager_1 = require("./betStateManager");
@@ -39235,7 +39267,6 @@ window.__require = function e(t, n, r) {
         data_1.Data.instance = new data_1.Data();
         data_1.ccData.instance = new data_1.ccData();
         gaEventEmitter_1.default.instance.registerEvent("racingDone", this.racingDone.bind(this));
-        gaEventEmitter_1.default.instance.registerEvent(gaEventsCode_1.default.NETWORK.WEB_SOCKET_OPEN, this.joinGame.bind(this));
         gaEventEmitter_1.default.instance.registerEvent("prepareDone", function() {
           _this.isAutoBet && _this.racing();
         });
@@ -39280,12 +39311,7 @@ window.__require = function e(t, n, r) {
         this.betStateManager.instantiateBet(this.oddsData, this.oddsItemPrefab, this.betPools, this.betBackgroundPools);
       };
       MainController.prototype.bet = function() {
-        var _this = this;
-        var payload = this.betStateManager.bet(this.betPools);
-        this.sendMessage._executeCommand(payload, function(response) {
-          data_1.Data.instance.dataRoundCurrent = "n" == response.event ? response : null;
-          data_1.Data.instance.dataRoundCurrent && _this.racing();
-        });
+        this.racing();
       };
       MainController.prototype.reJoinGame = function() {
         var _this = this;
@@ -39311,7 +39337,6 @@ window.__require = function e(t, n, r) {
           gaEventEmitter_1.default.instance.emit("prepareNextRound");
           _this.uiManager.activeBettingArea(true);
         }, 2);
-        this.reJoinGame();
       };
       MainController.prototype.autoBet = function() {
         this.isAutoBet = true;
@@ -39333,7 +39358,6 @@ window.__require = function e(t, n, r) {
   }, {
     "./betStateManager": "betStateManager",
     "./cc-arcade-base/Scripts/Common/gaEventEmitter": "gaEventEmitter",
-    "./cc-arcade-base/Scripts/Definitions/gaEventsCode": "gaEventsCode",
     "./data": "data",
     "./network": "network",
     "./sendMessage": "sendMessage"
@@ -39675,9 +39699,9 @@ window.__require = function e(t, n, r) {
     var data_1 = require("./data");
     var gaEventEmitter_1 = require("./cc-arcade-base/Scripts/Common/gaEventEmitter");
     var _a = cc._decorator, ccclass = _a.ccclass, property = _a.property;
-    var NewClass = function(_super) {
-      __extends(NewClass, _super);
-      function NewClass() {
+    var RacingController = function(_super) {
+      __extends(RacingController, _super);
+      function RacingController() {
         var _this = null !== _super && _super.apply(this, arguments) || this;
         _this.buffalos = [];
         _this.distanceLabel = null;
@@ -39689,13 +39713,13 @@ window.__require = function e(t, n, r) {
           value: 3
         };
         _this.distanceScroll = 800;
-        _this.distanceScrollPrepare = 240;
+        _this.xPrepare = -5500;
         _this.isRacing = false;
         _this.buffalosOderFinish = [];
-        _this.layerSpeed = [ .7, .9 ];
+        _this.layerSpeed = [ .7, .9, 1, 1 ];
         return _this;
       }
-      NewClass.prototype.onLoad = function() {
+      RacingController.prototype.onLoad = function() {
         var _this = this;
         gaEventEmitter_1.default.instance.registerEvent("prepareNextRound", this.prepareNextRound.bind(this));
         gaEventEmitter_1.default.instance.registerEvent("racingPrepareDone", this.countDownStart.bind(this));
@@ -39703,10 +39727,10 @@ window.__require = function e(t, n, r) {
           _this.isRacing = false;
         });
       };
-      NewClass.prototype.start = function() {
+      RacingController.prototype.start = function() {
         this.countDownLabel.node.active = false;
       };
-      NewClass.prototype.update = function(dt) {
+      RacingController.prototype.update = function(dt) {
         var _this = this;
         this.countDownLabel.node.active && (this.countDownLabel.string = Math.round(this.labelString.value).toString());
         if (!this.isRacing || this.node.x <= -data_1.Data.instance.racingDistance - 200 || this.getFastestBuffalo().x <= 0) return;
@@ -39718,20 +39742,21 @@ window.__require = function e(t, n, r) {
           data_1.Data.instance.layerDistance[index] += distance;
         });
       };
-      NewClass.prototype.racing = function() {
-        this.buffalosOderFinish = data_1.Data.instance.getOderFinish().split("");
+      RacingController.prototype.racing = function() {
+        data_1.Data.instance.randomOrh();
+        this.buffalosOderFinish = data_1.Data.instance.getOderFinish();
         this.prepare();
       };
-      NewClass.prototype.getFastestBuffalo = function() {
+      RacingController.prototype.getFastestBuffalo = function() {
         var fastestBuffalo = this.buffalos[0];
         this.buffalos.forEach(function(buffalo) {
           buffalo.x > fastestBuffalo.x && (fastestBuffalo = buffalo);
         });
         return fastestBuffalo;
       };
-      NewClass.prototype.prepare = function() {
+      RacingController.prototype.prepare = function() {
         var _this = this;
-        var durationPrepare = 1;
+        var durationPrepare = data_1.Data.instance.timePrepare;
         cc.tween(this.node).by(durationPrepare, {
           x: -this.distanceScroll
         }).call(function() {
@@ -39746,7 +39771,7 @@ window.__require = function e(t, n, r) {
           }).start();
         });
       };
-      NewClass.prototype.countDownStart = function() {
+      RacingController.prototype.countDownStart = function() {
         var _this = this;
         var time = 3;
         this.countDownLabel.node.active = true;
@@ -39761,34 +39786,36 @@ window.__require = function e(t, n, r) {
           _this.countDownLabel.node.active = false;
         }).start();
       };
-      NewClass.prototype.prepareNextRound = function() {
+      RacingController.prototype.prepareNextRound = function() {
         var _this = this;
-        cc.tween(this.node).by(1, {
-          x: -this.distanceScrollPrepare
+        cc.warn(this.node.x);
+        cc.tween(this.node).to(data_1.Data.instance.timePrepare, {
+          x: this.xPrepare
         }).call(function() {
+          cc.warn(_this.node.x);
           _this.node.x = -200;
           gaEventEmitter_1.default.instance.emit("prepareDone");
         }).start();
         this.layers.forEach(function(layer, index) {
           var distance = -200 * _this.layerSpeed[index];
-          cc.tween(layer).by(1, {
+          cc.tween(layer).by(data_1.Data.instance.timePrepare, {
             x: distance
           }).call(function() {
             data_1.Data.instance.layerDistance[index] -= distance;
           }).start();
         });
       };
-      __decorate([ property(cc.Node) ], NewClass.prototype, "buffalos", void 0);
-      __decorate([ property(cc.Label) ], NewClass.prototype, "distanceLabel", void 0);
-      __decorate([ property(cc.Node) ], NewClass.prototype, "finishLine", void 0);
-      __decorate([ property(cc.Label) ], NewClass.prototype, "countDownLabel", void 0);
-      __decorate([ property(cc.Node) ], NewClass.prototype, "layers", void 0);
-      __decorate([ property ], NewClass.prototype, "minDuration", void 0);
-      __decorate([ property ], NewClass.prototype, "labelString", void 0);
-      NewClass = __decorate([ ccclass ], NewClass);
-      return NewClass;
+      __decorate([ property(cc.Node) ], RacingController.prototype, "buffalos", void 0);
+      __decorate([ property(cc.Label) ], RacingController.prototype, "distanceLabel", void 0);
+      __decorate([ property(cc.Node) ], RacingController.prototype, "finishLine", void 0);
+      __decorate([ property(cc.Label) ], RacingController.prototype, "countDownLabel", void 0);
+      __decorate([ property(cc.Node) ], RacingController.prototype, "layers", void 0);
+      __decorate([ property ], RacingController.prototype, "minDuration", void 0);
+      __decorate([ property ], RacingController.prototype, "labelString", void 0);
+      RacingController = __decorate([ ccclass ], RacingController);
+      return RacingController;
     }(cc.Component);
-    exports.default = NewClass;
+    exports.default = RacingController;
     cc._RF.pop();
   }, {
     "./cc-arcade-base/Scripts/Common/gaEventEmitter": "gaEventEmitter",
@@ -39955,7 +39982,12 @@ window.__require = function e(t, n, r) {
         }, {
           onEvent: this._onEvent.bind(this)
         });
-        return this._executeCommand(payload, callback);
+        var dataEvent = {
+          data: {
+            orh: this.randomOrh()
+          }
+        };
+        callback();
       };
       SendMessage.prototype._executeCommand = function(payload, callback) {
         payload.data = payload.data || {};
@@ -39991,6 +40023,15 @@ window.__require = function e(t, n, r) {
       };
       SendMessage.prototype._onEvent = function(eventData) {
         this.eventManager.onEvent.apply(this.eventManager, arguments);
+      };
+      SendMessage.prototype.randomOrh = function() {
+        var orhBase = [ 1, 2, 3, 4, 5, 6 ];
+        var orh = [];
+        for (var i = 0; i < 6; i++) {
+          var randomOrh = orhBase[Math.floor(Math.random() * orhBase.length)];
+          orh.push(randomOrh);
+        }
+        return orh;
       };
       return SendMessage;
     }();
@@ -40596,9 +40637,9 @@ window.__require = function e(t, n, r) {
       value: true
     });
     var _a = cc._decorator, ccclass = _a.ccclass, property = _a.property;
-    var NewClass = function(_super) {
-      __extends(NewClass, _super);
-      function NewClass() {
+    var SkyController = function(_super) {
+      __extends(SkyController, _super);
+      function SkyController() {
         var _this = null !== _super && _super.apply(this, arguments) || this;
         _this.clouds = [];
         _this.startPos = null;
@@ -40606,35 +40647,35 @@ window.__require = function e(t, n, r) {
         _this.speeds = [ 30, 30, 20, 20, 10, 10 ];
         return _this;
       }
-      NewClass.prototype.start = function() {
+      SkyController.prototype.start = function() {
         var _this = this;
         this.clouds.forEach(function(cloud, index) {
           _this.startPos[index] = cloud.x;
         });
       };
-      NewClass.prototype.update = function(dt) {
+      SkyController.prototype.update = function(dt) {
         this.cloudMoving(dt);
         this.resetCloudPos();
       };
-      NewClass.prototype.cloudMoving = function(dt) {
+      SkyController.prototype.cloudMoving = function(dt) {
         var _this = this;
         this.clouds.forEach(function(cloud, index) {
           cloud.x += _this.speeds[index] * dt;
         });
       };
-      NewClass.prototype.resetCloudPos = function() {
+      SkyController.prototype.resetCloudPos = function() {
         var _this = this;
         this.clouds.forEach(function(cloud, index) {
           cloud.x > _this.endPos.x && (cloud.x = _this.startPos.x);
         });
       };
-      __decorate([ property(cc.Node) ], NewClass.prototype, "clouds", void 0);
-      __decorate([ property(cc.Node) ], NewClass.prototype, "startPos", void 0);
-      __decorate([ property(cc.Node) ], NewClass.prototype, "endPos", void 0);
-      NewClass = __decorate([ ccclass ], NewClass);
-      return NewClass;
+      __decorate([ property(cc.Node) ], SkyController.prototype, "clouds", void 0);
+      __decorate([ property(cc.Node) ], SkyController.prototype, "startPos", void 0);
+      __decorate([ property(cc.Node) ], SkyController.prototype, "endPos", void 0);
+      SkyController = __decorate([ ccclass ], SkyController);
+      return SkyController;
     }(cc.Component);
-    exports.default = NewClass;
+    exports.default = SkyController;
     cc._RF.pop();
   }, {} ],
   spineAtlasHolder: [ function(require, module, exports) {
@@ -40776,32 +40817,34 @@ window.__require = function e(t, n, r) {
     });
     var gaEventEmitter_1 = require("./cc-arcade-base/Scripts/Common/gaEventEmitter");
     var gaEventsCode_1 = require("./cc-arcade-base/Scripts/Definitions/gaEventsCode");
+    var data_1 = require("./data");
     var _a = cc._decorator, ccclass = _a.ccclass, property = _a.property;
-    var uiManager = function(_super) {
-      __extends(uiManager, _super);
-      function uiManager() {
+    var UIManager = function(_super) {
+      __extends(UIManager, _super);
+      function UIManager() {
         var _this = null !== _super && _super.apply(this, arguments) || this;
         _this.popupNode = null;
         _this.scrollNode = null;
         _this.betPools = null;
         _this.betBackground = null;
         _this.startButton = null;
+        _this.autoBetButton = null;
         _this.popupLbl = null;
         return _this;
       }
-      uiManager.prototype.start = function() {
+      UIManager.prototype.start = function() {
         this.popupNode.active = false;
         this.popupNode.scale = 0;
         this.activeBettingArea(true);
         gaEventEmitter_1.default.instance.registerEvent(gaEventsCode_1.default.NETWORK.CANNOT_AUTHEN, this.loginFailed.bind(this));
       };
-      uiManager.prototype.openPopup = function() {
+      UIManager.prototype.openPopup = function() {
         this.popupNode.active = true;
         cc.tween(this.popupNode).to(.5, {
           scale: 1
         }).start();
       };
-      uiManager.prototype.closePopup = function() {
+      UIManager.prototype.closePopup = function() {
         var _this = this;
         cc.tween(this.popupNode).to(.5, {
           scale: 0
@@ -40809,42 +40852,45 @@ window.__require = function e(t, n, r) {
           _this.popupNode.active = false;
         }).start();
       };
-      uiManager.prototype.loginFailed = function() {
+      UIManager.prototype.loginFailed = function() {
         this.openPopup();
         this.setLabelPopup("Login Failed");
       };
-      uiManager.prototype.loginSuccess = function() {
+      UIManager.prototype.loginSuccess = function() {
         this.openPopup();
         this.setLabelPopup("Login Success");
       };
-      uiManager.prototype.scrollUI = function(distance) {
-        cc.tween(this.node).by(1, {
+      UIManager.prototype.scrollUI = function(distance) {
+        cc.tween(this.node).by(data_1.Data.instance.timePrepare, {
           x: distance
         }).start();
       };
-      uiManager.prototype.setLabelPopup = function(content) {
+      UIManager.prototype.setLabelPopup = function(content) {
         this.popupLbl.string = content;
       };
-      uiManager.prototype.activeBettingArea = function(status) {
+      UIManager.prototype.activeBettingArea = function(status) {
         this.betPools.active = status;
         this.betBackground.active = status;
         this.startButton.active = status;
         this.scrollNode.active = status;
+        this.autoBetButton.active = status;
       };
-      __decorate([ property(cc.Node) ], uiManager.prototype, "popupNode", void 0);
-      __decorate([ property(cc.Node) ], uiManager.prototype, "scrollNode", void 0);
-      __decorate([ property(cc.Node) ], uiManager.prototype, "betPools", void 0);
-      __decorate([ property(cc.Node) ], uiManager.prototype, "betBackground", void 0);
-      __decorate([ property(cc.Node) ], uiManager.prototype, "startButton", void 0);
-      __decorate([ property(cc.Label) ], uiManager.prototype, "popupLbl", void 0);
-      uiManager = __decorate([ ccclass ], uiManager);
-      return uiManager;
+      __decorate([ property(cc.Node) ], UIManager.prototype, "popupNode", void 0);
+      __decorate([ property(cc.Node) ], UIManager.prototype, "scrollNode", void 0);
+      __decorate([ property(cc.Node) ], UIManager.prototype, "betPools", void 0);
+      __decorate([ property(cc.Node) ], UIManager.prototype, "betBackground", void 0);
+      __decorate([ property(cc.Node) ], UIManager.prototype, "startButton", void 0);
+      __decorate([ property(cc.Node) ], UIManager.prototype, "autoBetButton", void 0);
+      __decorate([ property(cc.Label) ], UIManager.prototype, "popupLbl", void 0);
+      UIManager = __decorate([ ccclass ], UIManager);
+      return UIManager;
     }(cc.Component);
-    exports.default = uiManager;
+    exports.default = UIManager;
     cc._RF.pop();
   }, {
     "./cc-arcade-base/Scripts/Common/gaEventEmitter": "gaEventEmitter",
-    "./cc-arcade-base/Scripts/Definitions/gaEventsCode": "gaEventsCode"
+    "./cc-arcade-base/Scripts/Definitions/gaEventsCode": "gaEventsCode",
+    "./data": "data"
   } ],
   utils: [ function(require, module, exports) {
     "use strict";
