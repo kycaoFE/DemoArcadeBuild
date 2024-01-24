@@ -39293,11 +39293,17 @@ window.__require = function e(t, n, r) {
         this.ui.active = false;
         this.scheduleOnce(function() {
           _this.sendMessage.joinGame(function(response) {
-            _this.data = response;
-            var ed = response.data.exD.ed;
-            data_1.Data.instance.setGameNumber(ed.substr(ed.indexOf(":") + 1, 7));
-            _this.instantiateBetState();
-            _this.racingController.active = true;
+            if (false == response) {
+              _this.ui.active = true;
+              _this.uiManager.openPopup();
+              _this.uiManager.setLabelPopup("Join Game Failed");
+            } else {
+              _this.data = response;
+              var ed = response.data.exD.ed;
+              data_1.Data.instance.setGameNumber(ed.substr(ed.indexOf(":") + 1, 7));
+              _this.instantiateBetState();
+              _this.racingController.active = true;
+            }
           });
         }, 2);
       };
@@ -40005,7 +40011,7 @@ window.__require = function e(t, n, r) {
         if (!this._isSuccessSendCommandId(commandId)) return;
         var respId = gaCommandID_1.gaGameCMD.responseOf(payload.event);
         if (!respId) return;
-        this.eventManager.waitForEvent(1e4, function(eventData) {
+        this.eventManager.waitForEvent(2e3, function(eventData) {
           if (eventData.event === respId) {
             var data = eventData.data;
             if (data.cId == commandId) {
@@ -40013,7 +40019,9 @@ window.__require = function e(t, n, r) {
               return;
             }
           }
-        }, function() {});
+        }, function() {
+          callback(false);
+        });
       };
       SendMessage.prototype._isSuccessSendCommandId = function(commandId) {
         var overLimited = commandId === CommandManager.COMMAND_FAILED_CONC_OVER_LIMIT;
@@ -40025,15 +40033,6 @@ window.__require = function e(t, n, r) {
       };
       SendMessage.prototype._onEvent = function(eventData) {
         this.eventManager.onEvent.apply(this.eventManager, arguments);
-      };
-      SendMessage.prototype.randomOrh = function() {
-        var orhBase = [ 1, 2, 3, 4, 5, 6 ];
-        var orh = [];
-        for (var i = 0; i < 6; i++) {
-          var randomOrh = orhBase[Math.floor(Math.random() * orhBase.length)];
-          orh.push(randomOrh);
-        }
-        return orh;
       };
       return SendMessage;
     }();
