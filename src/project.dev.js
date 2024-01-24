@@ -38224,6 +38224,8 @@ window.__require = function e(t, n, r) {
           this.scaleCanvasByOrientation();
           this.onGameShow();
         }
+        this.scaleCanvasByOrientation();
+        this.onGameShow();
       };
       GameResize.prototype.onGameShow = function() {
         if (cc.sys.isMobile) {
