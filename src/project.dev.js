@@ -39126,18 +39126,15 @@ window.__require = function e(t, n, r) {
       }
       LoadingController.prototype.start = function() {
         this.loadingBar.progress = 0;
-        this.loadMainScreen();
+        this.preloadMainScene();
       };
       LoadingController.prototype.preloadMainScene = function() {
         var _this = this;
-        var isLoaded = false;
-        cc.director.preloadScene("MainScene", function(completedCount, totalCount) {
-          var progress = completedCount / totalCount * 100;
+        cc.director.preloadScene("MainScene", function(completedCount, totalCount, item) {
+          var progress = completedCount / totalCount;
           _this.loadingBar.progress = progress;
-          if (progress >= .9 && !isLoaded) {
-            isLoaded = true;
-            _this.loadMainScreen();
-          }
+        }, function(error) {
+          error ? console.error(error) : _this.loadMainScreen();
         });
       };
       LoadingController.prototype.loadMainScreen = function() {
