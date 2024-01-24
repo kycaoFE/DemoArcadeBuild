@@ -38220,7 +38220,10 @@ window.__require = function e(t, n, r) {
         this.scaleCanvasByOrientation();
       };
       GameResize.prototype.update = function(dt) {
-        this._visibleSize.equals(cc.view.getVisibleSize()) || this.scaleCanvasByOrientation();
+        if (!this._visibleSize.equals(cc.view.getVisibleSize())) {
+          this.scaleCanvasByOrientation();
+          this.onGameShow();
+        }
       };
       GameResize.prototype.onGameShow = function() {
         if (cc.sys.isMobile) {
