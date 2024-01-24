@@ -271,6 +271,7 @@
             "__id__": 4
           },
           "autoOrientation": true,
+          "isPortrait": false,
           "canvas": {
             "__id__": 12
           }
