@@ -25028,6 +25028,7 @@ window.__require = function e(t, n, r) {
       value: true
     });
     var data_1 = require("./data");
+    var gaEventEmitter_1 = require("./cc-arcade-base/Scripts/Common/gaEventEmitter");
     var _a = cc._decorator, ccclass = _a.ccclass, property = _a.property;
     var betItemController = function(_super) {
       __extends(betItemController, _super);
@@ -25045,6 +25046,7 @@ window.__require = function e(t, n, r) {
         this.betValue += Number(chipValueBet);
         this.setValueLabel(this.numBuffalos, this.oddValue, this.betValue);
         this.setColorButtonBackground(data_1.ccData.instance.yellow);
+        gaEventEmitter_1.default.instance.emit("canBet", true);
       };
       betItemController.prototype.getBet = function() {
         if (this.betValue <= 0) return;
@@ -25063,6 +25065,7 @@ window.__require = function e(t, n, r) {
         this.betButtonBackground.color = color;
       };
       betItemController.prototype.resetBetValue = function() {
+        gaEventEmitter_1.default.instance.emit("canBet", false);
         this.betValue = 0;
         this.setValueLabel(this.numBuffalos, this.oddValue, 0);
         this.setColorButtonBackground(data_1.ccData.instance.white);
@@ -25075,6 +25078,7 @@ window.__require = function e(t, n, r) {
     exports.default = betItemController;
     cc._RF.pop();
   }, {
+    "./cc-arcade-base/Scripts/Common/gaEventEmitter": "gaEventEmitter",
     "./data": "data"
   } ],
   betStateManager: [ function(require, module, exports) {
@@ -25167,6 +25171,10 @@ window.__require = function e(t, n, r) {
       BetStateManager.prototype.showResult = function() {
         var buffalosWin = data_1.Data.instance.getBuffalosWin();
         var resultString = "Oder Finish: " + data_1.Data.instance.getOderFinish() + "\nBuffalo Win: " + buffalosWin + "\nBet Money Win: " + data_1.Data.instance.getMoneyWin() + "K";
+        this.bettingCurrent.forEach(function(element) {
+          var betItemController = element.getComponent("betItemController");
+          betItemController.resetBetValue();
+        });
         return resultString;
       };
       BetStateManager = __decorate([ ccclass ], BetStateManager);
@@ -26480,26 +26488,19 @@ window.__require = function e(t, n, r) {
         this.gameNumber = gameNumber;
       };
       Data.prototype.getBuffalosWin = function() {
-        return this.orh[0] + this.orh[1];
+        var data = this.dataRoundCurrent.data;
+        var buffalosWin = data.orh[0] < data.orh[1] ? data.orh[0] + data.orh[1] : data.orh[1] + data.orh[0];
+        return buffalosWin;
       };
       Data.prototype.getOderFinish = function() {
-        return this.orh;
+        return this.dataRoundCurrent.data.orh;
       };
       Data.prototype.getMoneyWin = function() {
-        return 0;
+        return Number(this.dataRoundCurrent.data.wg.split(";")[1]).toFixed();
       };
       Data.prototype.getOderBuffalo = function(buffaloNumber) {
-        var orderFinish = this.orh;
-        return Number(orderFinish.indexOf(buffaloNumber));
-      };
-      Data.prototype.randomOrh = function() {
-        this.orh = [];
-        var orhBase = [ "1", "2", "3", "4", "5", "6" ];
-        for (var i = 0; i < 6; i++) {
-          var randomIndex = Number([ Math.floor(Math.random() * orhBase.length) ]);
-          this.orh.push(orhBase[randomIndex]);
-          orhBase.splice(randomIndex, 1);
-        }
+        var oderFinish = this.getOderFinish();
+        return Number(oderFinish.indexOf(buffaloNumber));
       };
       Data.instance = null;
       return Data;
@@ -39242,6 +39243,7 @@ window.__require = function e(t, n, r) {
       value: true
     });
     var _a = cc._decorator, ccclass = _a.ccclass, property = _a.property;
+    var gaEventsCode_1 = require("./cc-arcade-base/Scripts/Definitions/gaEventsCode");
     var gaEventEmitter_1 = require("./cc-arcade-base/Scripts/Common/gaEventEmitter");
     var data_1 = require("./data");
     var betStateManager_1 = require("./betStateManager");
@@ -39264,6 +39266,7 @@ window.__require = function e(t, n, r) {
         data_1.Data.instance = new data_1.Data();
         data_1.ccData.instance = new data_1.ccData();
         gaEventEmitter_1.default.instance.registerEvent("racingDone", this.racingDone.bind(this));
+        gaEventEmitter_1.default.instance.registerEvent(gaEventsCode_1.default.NETWORK.WEB_SOCKET_OPEN, this.joinGame.bind(this));
         gaEventEmitter_1.default.instance.registerEvent("prepareDone", function() {
           _this.isAutoBet && _this.racing();
         });
@@ -39308,7 +39311,12 @@ window.__require = function e(t, n, r) {
         this.betStateManager.instantiateBet(this.oddsData, this.oddsItemPrefab, this.betPools, this.betBackgroundPools);
       };
       MainController.prototype.bet = function() {
-        this.racing();
+        var _this = this;
+        var payload = this.betStateManager.bet(this.betPools);
+        this.sendMessage._executeCommand(payload, function(response) {
+          data_1.Data.instance.dataRoundCurrent = "n" == response.event ? response : null;
+          data_1.Data.instance.dataRoundCurrent && _this.racing();
+        });
       };
       MainController.prototype.reJoinGame = function() {
         var _this = this;
@@ -39334,6 +39342,7 @@ window.__require = function e(t, n, r) {
           gaEventEmitter_1.default.instance.emit("prepareNextRound");
           _this.uiManager.activeBettingArea(true);
         }, 2);
+        this.reJoinGame();
       };
       MainController.prototype.autoBet = function() {
         this.isAutoBet = true;
@@ -39355,6 +39364,7 @@ window.__require = function e(t, n, r) {
   }, {
     "./betStateManager": "betStateManager",
     "./cc-arcade-base/Scripts/Common/gaEventEmitter": "gaEventEmitter",
+    "./cc-arcade-base/Scripts/Definitions/gaEventsCode": "gaEventsCode",
     "./data": "data",
     "./network": "network",
     "./sendMessage": "sendMessage"
@@ -39740,8 +39750,7 @@ window.__require = function e(t, n, r) {
         });
       };
       RacingController.prototype.racing = function() {
-        data_1.Data.instance.randomOrh();
-        this.buffalosOderFinish = data_1.Data.instance.getOderFinish();
+        this.buffalosOderFinish = data_1.Data.instance.getOderFinish().split("");
         this.prepare();
       };
       RacingController.prototype.getFastestBuffalo = function() {
@@ -39979,12 +39988,7 @@ window.__require = function e(t, n, r) {
         }, {
           onEvent: this._onEvent.bind(this)
         });
-        var dataEvent = {
-          data: {
-            orh: this.randomOrh()
-          }
-        };
-        callback();
+        return this._executeCommand(payload, callback);
       };
       SendMessage.prototype._executeCommand = function(payload, callback) {
         payload.data = payload.data || {};
@@ -40825,6 +40829,7 @@ window.__require = function e(t, n, r) {
         _this.betPools = null;
         _this.betBackground = null;
         _this.startButton = null;
+        _this.startButtonBackground = null;
         _this.autoBetButton = null;
         _this.popupLbl = null;
         return _this;
@@ -40834,6 +40839,8 @@ window.__require = function e(t, n, r) {
         this.popupNode.scale = 0;
         this.activeBettingArea(true);
         gaEventEmitter_1.default.instance.registerEvent(gaEventsCode_1.default.NETWORK.CANNOT_AUTHEN, this.loginFailed.bind(this));
+        gaEventEmitter_1.default.instance.registerEvent("canBet", this.enableStartButton.bind(this));
+        this.enableStartButton(false);
       };
       UIManager.prototype.openPopup = function() {
         this.popupNode.active = true;
@@ -40868,15 +40875,24 @@ window.__require = function e(t, n, r) {
       UIManager.prototype.activeBettingArea = function(status) {
         this.betPools.active = status;
         this.betBackground.active = status;
-        this.startButton.active = status;
+        this.startButton.node.active = status;
         this.scrollNode.active = status;
-        this.autoBetButton.active = status;
+      };
+      UIManager.prototype.enableStartButton = function(state) {
+        if (state) {
+          this.startButton.interactable = true;
+          this.startButtonBackground.color = cc.color(74, 155, 70);
+          return;
+        }
+        this.startButton.interactable = false;
+        this.startButtonBackground.color = cc.color(139, 139, 139);
       };
       __decorate([ property(cc.Node) ], UIManager.prototype, "popupNode", void 0);
       __decorate([ property(cc.Node) ], UIManager.prototype, "scrollNode", void 0);
       __decorate([ property(cc.Node) ], UIManager.prototype, "betPools", void 0);
       __decorate([ property(cc.Node) ], UIManager.prototype, "betBackground", void 0);
-      __decorate([ property(cc.Node) ], UIManager.prototype, "startButton", void 0);
+      __decorate([ property(cc.Button) ], UIManager.prototype, "startButton", void 0);
+      __decorate([ property(cc.Node) ], UIManager.prototype, "startButtonBackground", void 0);
       __decorate([ property(cc.Node) ], UIManager.prototype, "autoBetButton", void 0);
       __decorate([ property(cc.Label) ], UIManager.prototype, "popupLbl", void 0);
       UIManager = __decorate([ ccclass ], UIManager);
