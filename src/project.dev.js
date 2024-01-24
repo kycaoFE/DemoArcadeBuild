@@ -38217,7 +38217,6 @@ window.__require = function e(t, n, r) {
       }
       GameResize.prototype.start = function() {
         this.onGameShow();
-        this.scaleCanvasByOrientation();
       };
       GameResize.prototype.update = function(dt) {
         this._visibleSize.equals(cc.view.getVisibleSize()) || this.scaleCanvasByOrientation();
